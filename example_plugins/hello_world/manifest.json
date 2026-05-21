@@ -1,0 +1,16 @@
+{
+  "id": "hello.world",
+  "name": "Hello World",
+  "description": "BlankOS 第一个能力体，展示神经接口与事件系统",
+  "version": "2.0.0",
+  "entry": "index.html",
+  "icon": "",
+  "permissions": ["clipboard", "vibration", "storage", "events"],
+  "author": "社区成员",
+  "price": 0,
+  "payment_address": "",
+  "min_sdk_version": 2,
+  "dependencies": [],
+  "provides": ["greeting"],
+  "tags": ["示例", "入门", "工具"]
+}

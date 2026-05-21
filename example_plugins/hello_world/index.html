@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Hello World</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { text-align: center; max-width: 400px; width: 100%; }
+        h1 { font-size: 1.8em; margin-bottom: 12px; }
+        p { font-size: 1em; opacity: 0.9; margin-bottom: 20px; line-height: 1.6; }
+        .section {
+            margin: 16px 0;
+            padding: 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .section h3 {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 4px;
+        }
+        .button:hover { background: rgba(255,255,255,0.3); transform: translateY(-2px); }
+        .button:active { transform: translateY(0); }
+        .button.active { background: rgba(255,255,255,0.4); border-color: white; }
+        #status {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            min-height: 36px;
+            display: none;
+        }
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 20px;
+            font-size: 11px;
+            margin-top: 20px;
+        }
+        .event-log {
+            text-align: left;
+            max-height: 120px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: monospace;
+            opacity: 0.8;
+        }
+        .event-log div {
+            padding: 2px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .stored-data {
+            text-align: left;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧠 能力体 v2.0</h1>
+        <p>神经接口已连接。能力体可以感知、记忆、通信。</p>
+
+        <div class="section">
+            <h3>⚡ 神经接口</h3>
+            <button class="button" onclick="copySlogan()">复制</button>
+            <button class="button" onclick="vibrate()">震动</button>
+            <button class="button" onclick="getDeviceInfo()">设备</button>
+        </div>
+
+        <div class="section">
+            <h3>💾 记忆</h3>
+            <button class="button" onclick="saveMemory()">存入记忆</button>
+            <button class="button" onclick="readMemory()">读取记忆</button>
+            <button class="button" onclick="clearMemory()">清除记忆</button>
+            <div id="storedData" class="stored-data"></div>
+        </div>
+
+        <div class="section">
+            <h3>📡 事件总线</h3>
+            <button class="button" onclick="emitGreeting()">发射事件</button>
+            <button class="button" id="listenBtn" onclick="toggleListen()">监听事件</button>
+            <div id="eventLog" class="event-log"></div>
+        </div>
+
+        <div id="status"></div>
+        <div class="badge">BlankOS · 能力体生态</div>
+    </div>
+
+    <script>
+        window.BridgeCallbacks = {};
+        window.Neural = {
+            onEvent: function(data) {
+                addEventLog('收到: ' + data.event, data.data);
+            }
+        };
+
+        var _isListening = false;
+        var _memoryKey = 'hello_memory';
+        var _memoryCounter = 0;
+
+        function callBridge(action, params, callback) {
+            if (!window.Bridge) {
+                showStatus('神经接口未连接');
+                return;
+            }
+            var callbackId = action + '_' + Date.now();
+            if (callback) {
+                window.BridgeCallbacks[callbackId] = function(result) {
+                    callback(result);
+                    delete window.BridgeCallbacks[callbackId];
+                };
+            }
+            window.Bridge.postMessage(JSON.stringify({
+                action: action,
+                params: params || {},
+                callbackId: callbackId
+            }));
+        }
+
+        function showStatus(msg) {
+            var el = document.getElementById('status');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(function() { el.style.display = 'none'; }, 3000);
+        }
+
+        function addEventLog(label, data) {
+            var el = document.getElementById('eventLog');
+            var div = document.createElement('div');
+            div.textContent = label + (data ? ' | ' + JSON.stringify(data) : '');
+            el.appendChild(div);
+            el.scrollTop = el.scrollHeight;
+        }
+
+        function copySlogan() {
+            callBridge('copyToClipboard', { text: '零抽成 · 能力体生态' }, function(r) {
+                showStatus(r && r.success ? '已复制' : '失败');
+            });
+        }
+
+        function vibrate() {
+            callBridge('vibrate', {}, function(r) {
+                showStatus(r && r.success ? '震动已触发' : (r && r.error || '失败'));
+            });
+        }
+
+        function getDeviceInfo() {
+            callBridge('getDeviceInfo', {}, function(r) {
+                if (r) showStatus(r.platform + ' | SDK v' + r.sdkVersion);
+            });
+        }
+
+        function saveMemory() {
+            _memoryCounter++;
+            var data = {
+                timestamp: new Date().toISOString(),
+                count: _memoryCounter,
+                message: '记忆 #' + _memoryCounter
+            };
+            callBridge('storeData', { key: _memoryKey, value: data }, function(r) {
+                if (r && r.success) {
+                    showStatus('记忆已存入 #' + _memoryCounter);
+                    readMemory();
+                } else {
+                    showStatus(r && r.error || '存储失败');
+                }
+            });
+        }
+
+        function readMemory() {
+            callBridge('retrieveData', { key: _memoryKey }, function(r) {
+                var el = document.getElementById('storedData');
+                if (r && r.success && r.value) {
+                    el.textContent = '记忆: ' + JSON.stringify(r.value);
+                } else {
+                    el.textContent = '暂无记忆';
+                }
+            });
+        }
+
+        function clearMemory() {
+            callBridge('clearData', {}, function(r) {
+                if (r && r.success) {
+                    _memoryCounter = 0;
+                    document.getElementById('storedData').textContent = '记忆已清除';
+                    showStatus('记忆已清除');
+                }
+            });
+        }
+
+        function emitGreeting() {
+            callBridge('emitEvent', {
+                event: 'greeting',
+                data: { from: 'hello.world', message: '来自能力体的问候!', timestamp: Date.now() }
+            }, function(r) {
+                if (r && r.success) {
+                    addEventLog('发射: greeting', { from: 'hello.world' });
+                    showStatus('事件已发射');
+                }
+            });
+        }
+
+        function toggleListen() {
+            var btn = document.getElementById('listenBtn');
+            if (_isListening) {
+                callBridge('offEvent', { event: 'greeting' }, function(r) {
+                    _isListening = false;
+                    btn.textContent = '监听事件';
+                    btn.classList.remove('active');
+                    showStatus('已停止监听');
+                });
+            } else {
+                callBridge('onEvent', { event: 'greeting' }, function(r) {
+                    if (r && r.success) {
+                        _isListening = true;
+                        btn.textContent = '停止监听';
+                        btn.classList.add('active');
+                        showStatus('正在监听 greeting 事件');
+                    }
+                });
+            }
+        }
+
+        readMemory();
+    </script>
+</body>
+</html>

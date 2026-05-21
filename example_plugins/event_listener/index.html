@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>事件监听器</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 20px;
+        }
+        .container { max-width: 400px; margin: 0 auto; }
+        h1 { font-size: 1.6em; margin-bottom: 8px; text-align: center; }
+        p { font-size: 0.9em; opacity: 0.9; margin-bottom: 20px; text-align: center; }
+        .section {
+            margin: 12px 0;
+            padding: 16px;
+            background: rgba(255,255,255,0.12);
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+        }
+        .section h3 {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 4px;
+        }
+        .button:hover { background: rgba(255,255,255,0.3); }
+        .button.active { background: rgba(255,255,255,0.4); border-color: white; }
+        .event-log {
+            max-height: 200px;
+            overflow-y: auto;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        .event-log div {
+            padding: 6px 8px;
+            margin: 4px 0;
+            background: rgba(0,0,0,0.15);
+            border-radius: 6px;
+            border-left: 3px solid rgba(255,255,255,0.5);
+        }
+        .event-log .event-name {
+            font-weight: bold;
+            color: #ffe082;
+        }
+        .event-log .event-time {
+            font-size: 10px;
+            opacity: 0.6;
+        }
+        .event-log .event-data {
+            margin-top: 2px;
+            opacity: 0.8;
+            word-break: break-all;
+        }
+        .counter {
+            font-size: 2em;
+            font-weight: bold;
+            text-align: center;
+            padding: 8px;
+        }
+        #status {
+            margin-top: 12px;
+            padding: 8px 16px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📡 事件监听器</h1>
+        <p>监听能力体生态中的所有事件</p>
+
+        <div class="section">
+            <h3>🎯 监听控制</h3>
+            <button class="button" id="listenGreeting" onclick="toggleListen('greeting')">监听 greeting</button>
+            <button class="button" onclick="emitTest()">发射测试事件</button>
+            <button class="button" onclick="clearLog()">清空日志</button>
+        </div>
+
+        <div class="section">
+            <h3>📊 事件统计</h3>
+            <div class="counter" id="eventCount">0</div>
+            <p style="font-size:12px;opacity:0.7;margin:0">已接收事件数</p>
+        </div>
+
+        <div class="section">
+            <h3>📋 事件日志</h3>
+            <div id="eventLog" class="event-log"></div>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        window.BridgeCallbacks = {};
+        window.Neural = {
+            onEvent: function(data) {
+                addEventLog(data.event, data.data);
+            }
+        };
+
+        var _listeningEvents = {};
+        var _eventCount = 0;
+
+        function callBridge(action, params, callback) {
+            if (!window.Bridge) {
+                showStatus('神经接口未连接');
+                return;
+            }
+            var callbackId = action + '_' + Date.now();
+            if (callback) {
+                window.BridgeCallbacks[callbackId] = function(result) {
+                    callback(result);
+                    delete window.BridgeCallbacks[callbackId];
+                };
+            }
+            window.Bridge.postMessage(JSON.stringify({
+                action: action,
+                params: params || {},
+                callbackId: callbackId
+            }));
+        }
+
+        function showStatus(msg) {
+            var el = document.getElementById('status');
+            el.textContent = msg;
+            el.style.display = 'block';
+            setTimeout(function() { el.style.display = 'none'; }, 3000);
+        }
+
+        function addEventLog(eventName, data) {
+            _eventCount++;
+            document.getElementById('eventCount').textContent = _eventCount;
+
+            var log = document.getElementById('eventLog');
+            var div = document.createElement('div');
+            var time = new Date().toLocaleTimeString();
+            div.innerHTML =
+                '<span class="event-name">' + eventName + '</span>' +
+                '<span class="event-time"> · ' + time + '</span>' +
+                (data ? '<div class="event-data">' + JSON.stringify(data) + '</div>' : '');
+            log.insertBefore(div, log.firstChild);
+
+            callBridge('storeData', {
+                key: 'event_log_' + Date.now(),
+                value: { event: eventName, data: data, time: time }
+            });
+        }
+
+        function toggleListen(eventName) {
+            var btn = document.getElementById('listenGreeting');
+            if (_listeningEvents[eventName]) {
+                callBridge('offEvent', { event: eventName }, function(r) {
+                    _listeningEvents[eventName] = false;
+                    btn.textContent = '监听 greeting';
+                    btn.classList.remove('active');
+                    showStatus('已停止监听 ' + eventName);
+                });
+            } else {
+                callBridge('onEvent', { event: eventName }, function(r) {
+                    if (r && r.success) {
+                        _listeningEvents[eventName] = true;
+                        btn.textContent = '停止监听';
+                        btn.classList.add('active');
+                        showStatus('正在监听 ' + eventName + ' 事件');
+                    }
+                });
+            }
+        }
+
+        function emitTest() {
+            callBridge('emitEvent', {
+                event: 'greeting',
+                data: { from: 'event.listener', message: '测试事件!', timestamp: Date.now() }
+            }, function(r) {
+                if (r && r.success) {
+                    showStatus('测试事件已发射');
+                }
+            });
+        }
+
+        function clearLog() {
+            document.getElementById('eventLog').innerHTML = '';
+            _eventCount = 0;
+            document.getElementById('eventCount').textContent = '0';
+            callBridge('clearData', {}, function() {
+                showStatus('日志已清空');
+            });
+        }
+    </script>
+</body>
+</html>
